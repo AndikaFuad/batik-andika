@@ -28,28 +28,58 @@ class HistoryController extends Controller
 
     public function detail(Request $request, $id)
     {
-        
+
         $pesanan = pesanan::where('id', $id)->first();
-        $pesanan_detail = PesananDetail::where('pesanan_id', $pesanan->id)->get();
-        // $pesanans = PesananDetail::where('pesanan_id', $pesanan->id)->get()->toArray();
-        
+        $pesanan_detail = PesananDetail::with('barang')->where('pesanan_id', $pesanan->id)->get();
+        $pesanans = PesananDetail::where('pesanan_id', $pesanan->id)->get()->toArray();
+        // dd($pesanan_detail);
+        $item_details = [];
+
+        // // Looping data items details
+        // foreach ($pesanan_detail as $item) {
+        //     // Tambahkan data items details ke array
+        //     $item_details[] = [
+        //         'id' => $item->id,
+        //         'price' => $item->jumlah_harga,
+        //         'quantity' => $item->jumlah,
+        //         'name' => $item->barang_id,
+        //     ];
+        // }
+        // var_dump($item_details);
+        // die();
         if ($request->ajax()) {
             Config::$serverKey = env('MIDTRANS_SERVER_KEY');
             Config::$clientKey = env('MIDTRANS_CLIENT_KEY');
             Config::$isSanitized = Config::$is3ds = true;
             $transaction_details = array(
                 'order_id' => rand(),
-                'gross_amount' => $pesanan->jumlah_harga+$pesanan->kode, // no decimal allowed for creditcard
+                'gross_amount' => $pesanan->jumlah_harga + $pesanan->kode, // no decimal allowed for creditcard
             );
             // Optional
-            $item_details =  array (
-                array(
-                    'id' => 'a1',
-                    'price' => $pesanan->jumlah_harga+$pesanan->kode,
-                    'quantity' => 1,
-                    'name' => "Apple"
-                ),
-              );
+            // $item_details = array(
+            //     'id' => $pesanan_detail->id,
+            //     'price' => $pesanan_detail->jumlah_harga,
+            //     'quantity' => $pesanan_detail->jumlah,
+            //     'name' => $pesanan_detail->barang_id,
+            // );
+            // Looping data items details
+            foreach ($pesanan_detail as $item) {
+                // Tambahkan data items details ke array
+                $item_details[] = [
+                    'id' => $item->id,
+                    'price' => $item->barang->harga,
+                    'name' => $item->barang->nama_barang,
+                    'quantity' => $item->jumlah,
+                ];
+            }
+            // $item_details =  array (
+            //     array(
+            //         'id' => 'a1',
+            //         'price' => $pesanan->jumlah_harga+$pesanan->kode,
+            //         'quantity' => 1,
+            //         'name' => "Apple"
+            //     ),
+            //   );
             // Optional
             $customer_details = array(
                 'first_name'    => Auth::user()->name,
@@ -65,22 +95,22 @@ class HistoryController extends Controller
                 'customer_details' => $customer_details,
                 'item_details' => $item_details,
             );
-            
+
             $snap_token = '';
             try {
                 $snap_token = Snap::getSnapToken($transaction);
-            }
-            catch (\Exception $e) {
+            } catch (\Exception $e) {
                 echo $e->getMessage();
             }
             // return $snap_token;
-           return response()->json($snap_token);
+            return response()->json($snap_token);
         }
-       
 
-        return view('history.detail', compact('pesanan', 'pesanan_detail', 'id'));        
-    }    
-    public function bayar(Request $request) {
+
+        return view('history.detail', compact('pesanan', 'pesanan_detail', 'id'));
+    }
+    public function bayar(Request $request)
+    {
         return json_encode("success");
     }
 }
